@@ -9,6 +9,8 @@ tkinter tabanlı Spotify tarzında bir grafik arayüz içerir.
 Versiyon: 2.0
 """
 
+import os
+import sys
 import tkinter as tk
 from ui.screens import SpotifyARPApp
 from flask import Flask, render_template, jsonify
@@ -23,17 +25,29 @@ def index():
 
 # Masaüstü uygulaması başlatma fonksiyonu
 def start_desktop_app():
-    # Ana uygulamayı başlat
-    root = tk.Tk()
-    root.title("ARP Spoofing Tespit Aracı")
-    root.geometry("1000x650")
-    root.minsize(800, 600)
-    
-    # Uygulama nesnesini oluştur
-    desktop_app = SpotifyARPApp(root)
-    
-    # Uygulamayı başlat
-    root.mainloop()
+    try:
+        print("Tkinter UI başlatılıyor...")
+        
+        # Replit VNC için özel yapılandırma
+        os.environ['DISPLAY'] = ':1'
+        
+        # Ana uygulamayı başlat
+        root = tk.Tk()
+        root.title("ARP Spoofing Tespit Aracı")
+        root.geometry("1000x650")
+        root.minsize(800, 600)
+        
+        # Uygulama nesnesini oluştur
+        desktop_app = SpotifyARPApp(root)
+        
+        print("Uygulama başarıyla başlatıldı!")
+        
+        # Uygulamayı başlat
+        root.mainloop()
+    except Exception as e:
+        print(f"Uygulama başlatılırken hata oluştu: {e}")
+        import traceback
+        traceback.print_exc()
 
 if __name__ == "__main__":
     # Masaüstü uygulamasını doğrudan başlat
