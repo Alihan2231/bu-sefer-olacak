@@ -37,26 +37,56 @@ def get_arp_table():
     Returns:
         list: ARP tablosundaki kayıtlar listesi
     """
-    # Replit ortamında doğrudan test verileri kullan
-    # Gerçek bir sistemde çalıştırılmak üzere tasarlandı, ancak Replit ortamında
-    # gerekli komutlara erişim kısıtlı olduğundan test verileri kullanılıyor
+    arp_entries = []
     
-    # Normal ve şüpheli durumları içeren test verileri oluştur
-    test_entries = [
-        {"ip": "192.168.1.1", "mac": "aa:bb:cc:dd:ee:ff", "interface": "eth0"},  # Ağ geçidi
-        {"ip": "192.168.1.2", "mac": "11:22:33:44:55:66", "interface": "eth0"},  # Normal cihaz
-        {"ip": "192.168.1.3", "mac": "aa:bb:cc:dd:ee:ff", "interface": "eth0"},  # Şüpheli (ağ geçidi MAC'i ile aynı)
-        {"ip": "192.168.1.4", "mac": "22:33:44:55:66:77", "interface": "eth0"},  # Normal cihaz
-        {"ip": "192.168.1.5", "mac": "33:22:55:66:77:88", "interface": "eth0"},  # Normal cihaz 
-        {"ip": "192.168.1.6", "mac": "aa:bb:cc:11:22:33", "interface": "eth0"},  # Normal cihaz
-        {"ip": "192.168.1.7", "mac": "aa:bb:cc:11:22:33", "interface": "eth0"},  # Normal IP eşlemesi (aynı cihazın 2 IP'si)
-        {"ip": "192.168.1.8", "mac": "ff:ff:ff:ff:ff:ff", "interface": "eth0"},  # Broadcast MAC
-        {"ip": "192.168.1.10", "mac": "11:22:33:44:55:66", "interface": "eth0"}, # IP çakışması (aynı MAC farklı IP)
-        {"ip": "192.168.1.100", "mac": "de:ad:be:ef:12:34", "interface": "eth0"} # Normal cihaz
-    ]
-    
-    print("Not: Replit ortamı için test verileri kullanılıyor.")
-    return test_entries
+    try:
+        # Platforma göre uygun komutu belirle
+        if os.name == 'nt':  # Windows
+            # Windows'ta arp komutunu çalıştır
+            output = subprocess.check_output(['arp', '-a'], text=True)
+            # Windows ARP çıktısını ayrıştır
+            pattern = r'(\d+\.\d+\.\d+\.\d+)\s+([0-9a-f-]+)\s+(\w+)'
+            for line in output.split('\n'):
+                match = re.search(pattern, line)
+                if match:
+                    ip, mac, interface_type = match.groups()
+                    mac = mac.replace('-', ':')  # Standart formata çevir
+                    arp_entries.append({"ip": ip, "mac": mac, "interface": interface_type})
+        else:  # Linux/Unix
+            # Linux'ta arp komutunu çalıştır
+            output = subprocess.check_output(['arp', '-n'], text=True)
+            # Linux ARP çıktısını ayrıştır
+            for line in output.split('\n')[1:]:  # Başlık satırını atla
+                if line.strip():
+                    parts = line.split()
+                    if len(parts) >= 3:
+                        ip = parts[0]
+                        mac = parts[2]
+                        interface = parts[-1] if len(parts) > 3 else "unknown"
+                        if mac != "(incomplete)":  # Eksik kayıtları atla
+                            arp_entries.append({"ip": ip, "mac": mac, "interface": interface})
+        
+        return arp_entries
+        
+    except Exception as e:
+        print(f"ARP tablosu alınırken hata oluştu: {e}")
+        print("Test verileri kullanılıyor.")
+        
+        # Normal ve şüpheli durumları içeren test verileri oluştur
+        test_entries = [
+            {"ip": "192.168.1.1", "mac": "aa:bb:cc:dd:ee:ff", "interface": "eth0"},  # Ağ geçidi
+            {"ip": "192.168.1.2", "mac": "11:22:33:44:55:66", "interface": "eth0"},  # Normal cihaz
+            {"ip": "192.168.1.3", "mac": "aa:bb:cc:dd:ee:ff", "interface": "eth0"},  # Şüpheli (ağ geçidi MAC'i ile aynı)
+            {"ip": "192.168.1.4", "mac": "22:33:44:55:66:77", "interface": "eth0"},  # Normal cihaz
+            {"ip": "192.168.1.5", "mac": "33:22:55:66:77:88", "interface": "eth0"},  # Normal cihaz 
+            {"ip": "192.168.1.6", "mac": "aa:bb:cc:11:22:33", "interface": "eth0"},  # Normal cihaz
+            {"ip": "192.168.1.7", "mac": "aa:bb:cc:11:22:33", "interface": "eth0"},  # Normal IP eşlemesi (aynı cihazın 2 IP'si)
+            {"ip": "192.168.1.8", "mac": "ff:ff:ff:ff:ff:ff", "interface": "eth0"},  # Broadcast MAC
+            {"ip": "192.168.1.10", "mac": "11:22:33:44:55:66", "interface": "eth0"}, # IP çakışması (aynı MAC farklı IP)
+            {"ip": "192.168.1.100", "mac": "de:ad:be:ef:12:34", "interface": "eth0"} # Normal cihaz
+        ]
+        
+        return test_entries
 
 # Varsayılan ağ geçidini bulma
 def get_default_gateway():
@@ -66,10 +96,38 @@ def get_default_gateway():
     Returns:
         dict: Ağ geçidi IP ve MAC adresi
     """
-    # Replit ortamında doğrudan test verilerini kullan
-    # ARP tablomuzda ilk giriş olarak tanımladığımız ağ geçidini kullan
-    print("Not: Replit ortamı için test ağ geçidi verisi kullanılıyor.")
-    return {"ip": "192.168.1.1", "mac": "aa:bb:cc:dd:ee:ff"}
+    try:
+        if os.name == 'nt':  # Windows
+            # Windows'ta varsayılan ağ geçidini ipconfig ile bul
+            output = subprocess.check_output(['ipconfig'], text=True)
+            gateway_ip = None
+            for line in output.split('\n'):
+                if 'Default Gateway' in line or 'Varsayılan Ağ Geçidi' in line:
+                    match = re.search(r':\s*(\d+\.\d+\.\d+\.\d+)', line)
+                    if match:
+                        gateway_ip = match.group(1)
+                        break
+        else:  # Linux/Unix
+            # Linux'ta varsayılan ağ geçidini ip route ile bul
+            output = subprocess.check_output(['ip', 'route'], text=True)
+            match = re.search(r'default via (\d+\.\d+\.\d+\.\d+)', output)
+            gateway_ip = match.group(1) if match else None
+        
+        # Gateway IP'yi bulduktan sonra ARP tablosundan MAC adresini alıyoruz
+        if gateway_ip:
+            arp_table = get_arp_table()
+            for entry in arp_table:
+                if entry["ip"] == gateway_ip:
+                    return {"ip": gateway_ip, "mac": entry["mac"]}
+        
+        # Ağ geçidi bulunamadıysa veya hata oluştuysa test verisine dön
+        print("Varsayılan ağ geçidi bulunamadı veya MAC adresi alınamadı, test verisi kullanılıyor.")
+        return {"ip": "192.168.1.1", "mac": "aa:bb:cc:dd:ee:ff"}
+    
+    except Exception as e:
+        print(f"Varsayılan ağ geçidi bulunurken hata oluştu: {e}")
+        print("Test ağ geçidi verisi kullanılıyor.")
+        return {"ip": "192.168.1.1", "mac": "aa:bb:cc:dd:ee:ff"}
 
 # ARP spoofing tespiti
 def detect_arp_spoofing(arp_table):
