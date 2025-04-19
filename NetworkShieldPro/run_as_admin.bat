@@ -1,0 +1,3 @@
+@echo off
+echo ARP Spoofing Tespit Araci baslatiliyor...
+powershell Start-Process cmd -ArgumentList "/c cd /d %~dp0 && python main.py" -Verb RunAs
